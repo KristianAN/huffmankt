@@ -47,8 +47,8 @@ data class Node(
         }
     }
 
-    private fun leftIsNull(): Boolean = left == null
-    private fun rightIsNull(): Boolean = right == null
+    fun leftIsNull(): Boolean = left == null
+    fun rightIsNull(): Boolean = right == null
 }
 
 /**
@@ -121,7 +121,7 @@ fun Input.createHuffmanFromInput(): Node {
 
     // Tailrec is a compiler optimization that ensures this is compiled into a while loop in the JVM bytecode
     tailrec fun createHuffmanFromPq (pq: PriorityQueue<Node>): Node {
-        if (pq.size ==1 ) return pq.poll()
+        if (pq.size == 1) return pq.poll()
 
         val firstNode = pq.poll()
         val secondNode = pq.poll()
@@ -158,7 +158,7 @@ fun Input.encode(): Result<BooleanArray> {
 
 private fun createCodes(root: Node, binCodes: BooleanArray, huffman: MutableMap<Char, BooleanArray>, index: Int): MutableMap<Char, BooleanArray> {
 
-    if (root.left == null && root.right == null) {
+    if (root.leftIsNull() && root.rightIsNull()) {
         root.content?.let {
             huffman[it] = binCodes.copyOfRange(0, index)
         }
