@@ -13,7 +13,7 @@ fun main() {
     val encoded = input.encode()
     val tree = input.createHuffmanFromInput()
 
-    val decoded = EncodedData(encoded.getOrNull()!!, tree.first).decode()
+    val decoded = EncodedData(encoded.getOrNull()!!, tree).decode()
 
     println(decoded)
     println(decoded == input.input)
@@ -28,18 +28,18 @@ data class Node(
     val left: Node? = null,
     val right: Node? = null
 ) {
-    fun height(): Result<Int> = _height(this)
+    fun height(): Result<Int> = heightFromRoot(this)
 
     // This is a bit messy when dealing with recursive calls to nullables
-    private fun _height(root: Node): Result<Int> {
+    private fun heightFromRoot(root: Node): Result<Int> {
         return if (root.leftIsNull() && root.rightIsNull()) Result.success(0) else {
 
             // This looks a bit strange, but it uses the builtin check for null with elvis operator and the Result Monad
             // It ends up being a decently elegant call
-            val leftHeight =  root.left?.let { _height(it) }
+            val leftHeight =  root.left?.let { heightFromRoot(it) }
                 ?.getOrElse { return Result.failure(it) } ?: return Result.failure(TreeHeightException)
 
-            val rightHeight = root.right?.let {_height(it) }
+            val rightHeight = root.right?.let {heightFromRoot(it) }
                 ?.getOrElse { return Result.failure(it) } ?: return Result.failure(TreeHeightException)
 
 
@@ -102,7 +102,7 @@ data class EncodedData(
 @JvmInline
 value class Input(val input: String)
 
-fun Input.createHuffmanFromInput(): Pair<Node, Int> {
+fun Input.createHuffmanFromInput(): Node {
 
     /*
      * If we want to use the PriorityQueue from the standard library we have to provide
@@ -111,14 +111,14 @@ fun Input.createHuffmanFromInput(): Pair<Node, Int> {
     val compareNodeByValue: Comparator<Node> = compareBy { it.value }
 
     // Kotlin allows us to have internal functions for private encapsulation
-    fun getFrqPq(): Pair<PriorityQueue<Node>, Int> {
+    fun getFrqPq(): PriorityQueue<Node> {
         val pq = PriorityQueue(compareNodeByValue)
 
         input.groupingBy { it }.eachCount().onEach { entry ->
             pq.add(Node(entry.key, entry.value))
         }
 
-        return Pair(pq, pq.size)
+        return pq
     }
 
     val frq = getFrqPq()
@@ -141,17 +141,17 @@ fun Input.createHuffmanFromInput(): Pair<Node, Int> {
         return createHuffmanFromPq(pq)
     }
 
-    return Pair(createHuffmanFromPq(frq.first), frq.second)
+    return createHuffmanFromPq(frq)
 }
 
 // Create a BooleanArray encoding of the input
 fun Input.encode(): Result<BooleanArray> {
-    val root: Pair<Node, Int> = createHuffmanFromInput()
-    val codes: MutableMap<Char, BooleanArray> = mutableMapOf<Char, BooleanArray>()
+    val root = createHuffmanFromInput()
+    val codes: MutableMap<Char, BooleanArray> = mutableMapOf()
 
-    val codesForChars = createCodes(root.first, BooleanArray(root.first.height().getOrElse {
+    val codesForChars = createCodes(root, BooleanArray(root.height().getOrElse {
         return Result.failure(it)
-    }), codes, 0, root.second)
+    }), codes, 0)
 
     val encoded = input.map {
         codesForChars[it]
@@ -160,7 +160,7 @@ fun Input.encode(): Result<BooleanArray> {
     return Result.success(encoded ?: return Result.failure(JoinCodesException))
 }
 
-private fun createCodes(root: Node, binCodes: BooleanArray, huffman: MutableMap<Char, BooleanArray>, index: Int, size: Int): MutableMap<Char, BooleanArray> {
+private fun createCodes(root: Node, binCodes: BooleanArray, huffman: MutableMap<Char, BooleanArray>, index: Int): MutableMap<Char, BooleanArray> {
 
     if (root.left == null && root.right == null) {
         root.content?.let {
@@ -170,12 +170,12 @@ private fun createCodes(root: Node, binCodes: BooleanArray, huffman: MutableMap<
 
     root.left?.let {
         binCodes[index] = true
-        createCodes(it, binCodes , huffman, index + 1, size)
+        createCodes(it, binCodes , huffman, index + 1)
     }
 
     root.right?.let {
         binCodes[index] = false
-        createCodes(it, binCodes, huffman,  index + 1, size)
+        createCodes(it, binCodes, huffman,  index + 1)
     }
 
     return huffman
