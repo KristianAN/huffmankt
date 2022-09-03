@@ -58,12 +58,10 @@ data class EncodedData(
     val bits: BooleanArray,
     val huffman: Node,
 ) {
-
     fun decode(): String {
         var root = this.huffman
-        val sb = StringBuilder()
 
-        bits.forEach { bool ->
+        return bits.map { bool ->
             if (bool) {
                 root.left?.let { root = it }
             } else {
@@ -72,10 +70,8 @@ data class EncodedData(
 
             root.content?.let {
                 root = huffman
-                sb.append(it) }
-        }
-
-        return sb.toString()
+                it }
+        }.filterNotNull().joinToString("")
     }
 
     // Generated Intellij code
