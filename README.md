@@ -1,2 +1,6 @@
 # Implementation of huffman coding in Kotlin
 An idiomatic kotlin solution to the huffman coding algorithm. It uses the boolean[] as a datatype for storing the codes. This is the most efficient(not storage efficient) way to do it on the JVM. There are still two functions that use mutable datastructures, it would be cool to refactor them to use immutable datastructures. This is probably very possible if I just spend some more time on it. The benefit of immutability would be that this code then easily could be used in a multithreaded context. Mutability also introduces side effects in our functions, which really is an anti-pattern in kotlin.
+
+There are some caveats in this solution. The encoded list will generally be a lot bigger than the original string when held in memory. As far as I know the JVM can not address single bits but need a byte reference. As such we can store a binary representation, but not as bits. I have chosen the Boolean type as it best represents a bit (true/false = 1/0) and only has a flipped value. When serializing to a file we can store each bool as a bit and thus get an actual compressed size. 
+
+As a side note if we use kotlin native and target llvm we can use the BitSet in the kotlin standard library for the encoding and do bit addressing. 

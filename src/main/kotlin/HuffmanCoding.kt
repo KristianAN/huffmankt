@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.*
 import kotlin.Comparator
 import kotlin.math.max
@@ -9,13 +10,13 @@ import kotlin.math.max
 
 // Just to run our examples
 fun main() {
-    val input = Input("BCAADDDCCACACAC")
+    val input = Input(File("/home/kristian/IdeaProjects/huffmankt/resources/medium-input.huff").readText())
+    //val input = Input("BCAADDDCCACACAC")
+    val start = System.currentTimeMillis()
     val encoded = input.encode()
+    println("Time spent encoding: ${System.currentTimeMillis() - start}")
     val tree = input.createHuffmanFromInput()
-
     val decoded = EncodedData(encoded.getOrNull()!!, tree).decode()
-
-    println(decoded)
     println(decoded == input.input)
 }
 
@@ -55,13 +56,13 @@ data class Node(
  * [EncodedData] Is a data carrier for the data we need to decompress/
  */
 data class EncodedData(
-    val bits: BooleanArray,
+    val bits: List<Boolean>,
     val huffman: Node,
 ) {
     fun decode(): String {
         var root = this.huffman
 
-        return bits.map { bool ->
+        return bits.mapNotNull { bool ->
             if (bool) {
                 root.left?.let { root = it }
             } else {
@@ -70,24 +71,10 @@ data class EncodedData(
 
             root.content?.let {
                 root = huffman
-                it }
-        }.filterNotNull().joinToString("")
+                it
+            }
+        }.joinToString("")
     }
-
-    // Generated Intellij code
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as EncodedData
-
-        if (!bits.contentEquals(other.bits)) return false
-        if (huffman != other.huffman) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int = 31 * bits.contentHashCode() + huffman.hashCode()
 }
 
 /**
@@ -141,26 +128,32 @@ fun Input.createHuffmanFromInput(): Node {
 }
 
 // Create a BooleanArray encoding of the input
-fun Input.encode(): Result<BooleanArray> {
+fun Input.encode(): Result<List<Boolean>> {
     val root = createHuffmanFromInput()
-    val codes: MutableMap<Char, BooleanArray> = mutableMapOf()
+    val codes: MutableMap<Char, List<Boolean>> = mutableMapOf()
 
-    val codesForChars = createCodes(root, BooleanArray(root.height().getOrElse {
+    val codeList: MutableList<Boolean> = MutableList(root.height().getOrElse {
         return Result.failure(it)
-    }), codes, 0)
+    }) { true }
 
-    val encoded = input.map {
-        codesForChars[it]
-    }.reversed().reduce { acc, booleans -> booleans?.plus(acc ?: return Result.failure(JoinCodesException)) }
+    val codesForChars = createCodes(root, codeList, codes, 0)
 
-    return Result.success(encoded ?: return Result.failure(JoinCodesException))
+
+    kotlin.runCatching {
+        return Result.success(input.map {char ->
+            codesForChars[char]!!
+        }.flatten())
+    }.getOrElse {
+        return Result.failure(it)
+    }
+
 }
 
-private fun createCodes(root: Node, binCodes: BooleanArray, huffman: MutableMap<Char, BooleanArray>, index: Int): MutableMap<Char, BooleanArray> {
+private fun createCodes(root: Node, binCodes: MutableList<Boolean>, huffman: MutableMap<Char, List<Boolean>>, index: Int): MutableMap<Char, List<Boolean>> {
 
     if (root.leftIsNull() && root.rightIsNull()) {
         root.content?.let {
-            huffman[it] = binCodes.copyOfRange(0, index)
+            huffman[it] = binCodes.subList(0, index).toList() // Careful to copy here, or we will pass in the reference to the original list, which is mutating.
         }
     }
 
@@ -178,4 +171,3 @@ private fun createCodes(root: Node, binCodes: BooleanArray, huffman: MutableMap<
 }
 
 object TreeHeightException: Exception("Could not calculate tree height due to null leaf")
-object JoinCodesException: Exception("Unable to join binary codes")
